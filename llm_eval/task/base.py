@@ -2,6 +2,9 @@ import json
 from typing import Dict, Any
 
 class TaskBase:
+    def __init__(self):
+        self._task_data = {}
+    
     def get_subtask_data(self, name):
         if name in self._task_data:
             return self._task_data[name]

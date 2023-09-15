@@ -1,5 +1,7 @@
 """
-Generate prompts for legal judgment prediction
+Generate prompts for legal judgment prediction.
+
+The setting is same as the EMNLP2023 submitted paper.
 """
 
 import re
@@ -46,7 +48,8 @@ class JudgmentPrediction_Task(TaskBase):
 
         self._task_data = {}
     
-    def _convert_label(self, lab2id):
+    @staticmethod
+    def _convert_label(lab2id):
         lab2id = {re.sub(r'[\[\]]', '',k): v for k,v in lab2id.items()}
         return lab2id
     

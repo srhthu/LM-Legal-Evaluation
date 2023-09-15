@@ -1,9 +1,9 @@
-CUDA_VISIBLE_DEVICES=0 python eval_pipeline.py \
+CUDA_VISIBLE_DEVICES=1 python eval_pipeline.py \
 `# python -m llm_eval.task.ljp` \
-./outputs/ljp/zh_llama2_7b \
+./outputs/ljp/baichuan_7b \
 --sub_tasks all \
 --agent_type hf \
---model /storage_fast/rhshui/llm/chinese-llama-2-7b --trust_remote_code true \
+--model /storage_fast/rhshui/llm/baichuan-7b --trust_remote_code true \
 --num_output 5 \
 --max_new_tokens 30 \
 --do_sample \

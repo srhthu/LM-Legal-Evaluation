@@ -50,10 +50,22 @@ class AgentArguments:
     
     # HF
     trust_remote_code: bool = False
-    torch_dtype: Optional[torch.dtype] = torch.float16
+    torch_dtype: Union[str, torch.dtype] = torch.float16
+
+    def __post_init__(self):
+        if not isinstance(self.torch_dtype, torch.dtype):
+            if self.torch_dtype == 'float16':
+                self.torch_dtype = torch.float16
+            else:
+                self.torch_dtype = 'auto'
 
 class GenerateAgentBase:
-    def __init__(self, agent_config: AgentArguments, gen_config: GenerateArguments):
+    def __init__(
+        self, 
+        agent_config: AgentArguments, 
+        gen_config: GenerateArguments, 
+        late_build = False
+    ):
         self.gen_config = gen_config
         self.agent_config = agent_config
 
@@ -111,7 +123,7 @@ class GenerateAgentBase:
                 if PRINT_TRACEBACK:
                     err = traceback.format_exc()
                     print(f'Error {key_name}={sample[key_name]}, {err}')
-                    print(save_d)
+                    print(sample)
                     exit()
                 else:
                     err_log = f'Error {key_name}={sample[key_name]}, {str(e)}'

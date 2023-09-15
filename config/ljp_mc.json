@@ -1,0 +1,19 @@
+{
+    "agent_config": {
+        "agent_type": "hf",
+        "model": "baichuan_7b",
+        "trust_remote_code": false,
+        "torch_dtype": "float16"
+    },
+    "generate_config": {
+        "num_output": 5,
+        "max_new_tokens": 30,
+        "do_sample": true,
+        "temperature": 0.8
+    },
+    "task_config": {
+        "task_type": "ljp_mc",
+        "data_path": "/storage/rhshui/workspace/legal-eval/data_hub/ljp_mc5",
+        "prompt_config_file": "/storage/rhshui/workspace/legal-eval/config/template/ljp_mc_zs_2.json"
+    }
+}
