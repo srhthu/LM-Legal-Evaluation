@@ -31,6 +31,12 @@ class Evaluator:
         )
         self.task = AutoTask.from_dict(run_config['task_config'], tokenizer = self.agent.tokenizer)
     
+    def set_output_dir(self, path):
+        self.output_dir = Path(path)
+    
+    def set_config(self, config):
+        self.run_config = deepcopy(config)
+
     def do_eval(self, sub_tasks: Union[str, List[str]]):
         if isinstance(sub_tasks, str):
             if sub_tasks == 'all':
@@ -58,7 +64,7 @@ class Evaluator:
             record = {'time': time.time(), 'subtask': sub_t, 'metrics': metrics}
             log = json.dumps(record, ensure_ascii='False')
             print(log)
-            with open(metric_path, 'a') as f:
+            with open(metric_path, 'a', encoding='utf8') as f:
                 f.write(log + '\n')
 
 def main(output_dir, sub_task, run_config):

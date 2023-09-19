@@ -1,0 +1,4 @@
+{
+    "prompt_template_zs": "你是一个中国法律专家，根据中国刑法判断犯罪嫌疑人的罪名，请直接输出罪名。{query}",
+    "demo_template": "##案件事实：{input} ##罪名提示: {options} ##罪名：{output}"
+}

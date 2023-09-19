@@ -37,7 +37,8 @@ class GenerateArguments:
     # for openai
     stop: Union[str, List[str]] = '\n'
     # for hf
-    # decode_save_memory: bool = True
+    decode_save_memory: bool = True 
+    # decode one sample each time. Otherwise, decode multiple samples simultaneously
 
     def to_dict(self):
         return {k: deepcopy(v) for k,v in self.__dict__.items() if v is not None}
@@ -72,6 +73,9 @@ class GenerateAgentBase:
         self.init()
     
     def init(self):
+        raise NotImplementedError
+    
+    def build_model(self):
         raise NotImplementedError
             
     def generate(self, input_text, num_output = 1):
@@ -227,7 +231,7 @@ class Huggingface_Agent(GenerateAgentBase):
 
         hf_gen_cfg = self.get_hf_generation_config()
         
-        save_memory = True
+        save_memory = self.gen_config.decode_save_memory
         if save_memory:
             hf_gen_cfg.num_return_sequences = 1
             output_ids = [self.model.generate(input_ids, hf_gen_cfg) for _ in range(num_output)]
