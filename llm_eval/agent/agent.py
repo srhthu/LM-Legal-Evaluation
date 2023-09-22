@@ -64,13 +64,13 @@ class GenerateAgentBase:
     def __init__(
         self, 
         agent_config: AgentArguments, 
-        gen_config: GenerateArguments, 
-        late_build = False
+        gen_config: GenerateArguments = None, 
+        **kws
     ):
         self.gen_config = gen_config
         self.agent_config = agent_config
 
-        self.init()
+        self.init(**kws)
     
     def init(self):
         raise NotImplementedError
@@ -197,12 +197,11 @@ class Huggingface_Agent(GenerateAgentBase):
     """
     Implement a local LLM with transformers.
     """
-    def init(self):
+    def init(self, late_init = False):
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.agent_config.model, 
             trust_remote_code = self.agent_config.trust_remote_code
         )
-        late_init = True
         if late_init:
             self.model = None
         else:
@@ -254,8 +253,8 @@ AGENT_MAP = {
 
 class AutoAgent:
     @classmethod
-    def from_config(_, agent_config, gen_config) -> GenerateAgentBase:
-        cls = AGENT_MAP[agent_config.agent_type](agent_config, gen_config)
+    def from_config(_, agent_config, gen_config, **kws) -> GenerateAgentBase:
+        cls = AGENT_MAP[agent_config.agent_type](agent_config, gen_config, **kws)
         return cls
 
 if __name__ == '__main__':

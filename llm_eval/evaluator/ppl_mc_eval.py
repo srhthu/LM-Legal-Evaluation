@@ -2,61 +2,78 @@
 Perplexity Evaluator for Multi-choice questions.
 """
 import numpy as np
-from llm_eval.ppl import PPL
+from pathlib import Path
+from copy import deepcopy
+from typing import List, Optional, Union
+import time
+import json
 
-class MultiChoice_PPL:
+
+from llm_eval.handler.multi_choice_ppl import MultiChoicePPL
+from llm_eval.task import AutoTask
+from llm_eval.utils import read_jsonl, read_json
+from llm_eval.task.ljp import JudgmentPredictionConfig, JudgmentPrediction_Task
+from .utils import perform_task_timely_save
+
+class MultiChoice_Pipeline:
     """
+    Manage multi subtask evaluate, save results and metrics
+
     Args:
-        metric: how to compare options
-            - ppl: averaged negative log probability
-            - logp: log probability of the whole option
-            - ppl_norm: ppl minus prior ppl of the option
-            - logp_norm: logp minus prior logp of the option
-
-    __call__:
-        input: dict of fields:
-            - question: str
-            - options: List[str]
-        output: dict of fields:
-            - choice(`int`): index of option
-            - condition_logp(`List[np.array]`): the conditional log prob of tokens of options,
-                i.e., p(option|question)
-            - prior_logp(`List[np.array]`): the prior log prob of tokens of options,
-                i.e., p(option)
+        run_config:
+            agent_config: 
+                model
+                trust_remote_code
+            task_config:
+                
     """
-    def __init__(self, model, tokenizer, metric = 'ppl'):
-        self.ppl_worker = PPL(model, tokenizer, 'none')
-        self.metric = metric
-        assert self.metric in ['ppl', 'logp', 'ppl_norm', 'logp_norm']
+    def __init__(self, output_dir, run_config):
+        self.output_dir = Path(output_dir)
+        self.run_config = deepcopy(run_config)
+        self.worker = MultiChoicePPL(run_config['model_config'], late_init = True)
+        self.task = AutoTask.from_dict(run_config['task_config'], tokenizer = self.worker.tokenizer)
     
-    def __call__(self, example):
-        question = example['question']
-        options = example['options']
+    def set_output_dir(self, path):
+        self.output_dir = Path(path)
+    
+    def set_config(self, config):
+        self.run_config = deepcopy(config)
 
-        cond_ppl = [self.ppl_worker.text_ppl(question, k).cpu().tolist() for k in options]
-        prior_ppl = [self.ppl_worker.text_ppl(k).cpu().tolist() for k in options]
-        
-        output_dict = {'cond_ppl': cond_ppl, 'prior_ppl': prior_ppl}
-    
-        for met in ['ppl', 'logp', 'ppl_norm', 'logp_norm']:
-            scores = self.cal_metric(cond_ppl, prior_ppl, met)
-            cho = np.argmax(scores)
-            output_dict[f'choice_{met}'] = cho
+    def map_func(self, example):
+        output = self.worker(example)
+        output = {k:example[k] for k in ['idx', 'question', 'options', 'label']} | output
+        return output
 
-        return output_dict
-    
-    @staticmethod
-    def cal_metric(cond_ppl, prior_ppl, metric):
-        """return modified log probability"""
-        if metric == 'ppl':
-            return [- np.mean(k) for k in cond_ppl]
-        elif metric == 'logp':
-            return [- np.sum(k) for k in cond_ppl]
-        elif metric == 'ppl_norm':
-            return [-np.mean(c-p) for c,p in zip(cond_ppl, prior_ppl)]
-        elif metric == 'logp_norm':
-            return [-np.sum(c-p) for c,p in zip(cond_ppl, prior_ppl)]
-        else:
-            raise ValueError(f'Error value of metric: {metric}')
-    
-    
+    def do_eval(self, sub_tasks: Union[str, List[str]]):
+        if isinstance(sub_tasks, str):
+            if sub_tasks == 'all':
+                sub_tasks = self.task.get_all_subtask()
+            else:
+                sub_tasks = sub_tasks.split(',')
+        self.output_dir.mkdir(parents = True, exist_ok = True)
+        metric_path = self.output_dir / "eval_results.txt"
+        for sub_t in sub_tasks:
+            print(f'Evaluate subtask: {sub_t}')
+            sub_t_dir = self.output_dir / sub_t
+            sub_t_dir.mkdir(parents = True, exist_ok = True)
+            raw_output_path = sub_t_dir / 'raw_output.txt'
+            with open(sub_t_dir / 'run_config.json', 'w') as f:
+                json.dump(self.run_config, f, indent = 4, ensure_ascii=False)
+
+            task_data = self.task.get_subtask_data(sub_t)
+
+            perform_task_timely_save(task_data, self.map_func, raw_output_path)
+            
+            llm_outputs = read_jsonl(raw_output_path)
+
+            try:
+                metrics = self.task.evaluate_outputs(llm_outputs, sub_t)
+            except Exception as e:
+                print(f'Error during evaluation. {str(e)}')
+                continue
+            metrics = {k:float(v) for k,v in metrics.items()} # for serialization
+            record = {'time': time.time(), 'subtask': sub_t, 'metrics': metrics}
+            log = json.dumps(record, ensure_ascii='False')
+            print(log)
+            with open(metric_path, 'a', encoding='utf8') as f:
+                f.write(log + '\n')

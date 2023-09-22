@@ -5,12 +5,14 @@ from llm_eval.task.simple_prompt import (
     SimplePrompt_Config, SimplePrompt_Task,
     SimplePrompt_FieldTrunc_Task, SimplePrompt_FieldTrunc_Config
 )
+from llm_eval.task.ljp_mc_ppl import JudgPredMulti_Config, JudgPredMulti_PPL_Task
 
 TASK_MAP = {
     "ljp": (JudgmentPredictionConfig, JudgmentPrediction_Task),
     'ljp_mc': (JudgPredMulti_Config, JudgPredMulti_Task),
     'simple_prompt': (SimplePrompt_Config, SimplePrompt_Task),
-    'simple_prompt_ft': (SimplePrompt_FieldTrunc_Task, SimplePrompt_FieldTrunc_Config)
+    'simple_prompt_ft': (SimplePrompt_FieldTrunc_Task, SimplePrompt_FieldTrunc_Config),
+    'ljp_mc_ppl': (JudgPredMulti_Config, JudgPredMulti_PPL_Task)
 }
 class AutoTask:
     @classmethod

@@ -1,0 +1,12 @@
+{
+    "model_config": {
+        "model_name": "baichuan_7b",
+        "trust_remote_code": true,
+        "torch_dtype": "float16"
+    },
+    "task_config": {
+        "task_type": "ljp_mc_ppl",
+        "data_path": "/storage/rhshui/workspace/legal-eval/data_hub/ljp_mc5",
+        "prompt_config_file": "/storage/rhshui/workspace/legal-eval/config/template/ljp_mc_ppl_1.json"
+    }
+}
