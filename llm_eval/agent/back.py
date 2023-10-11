@@ -6,6 +6,7 @@ from environs import Env
 import openai
 import torch
 from transformers import LlamaConfig, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, GenerationConfig
+from peft import PeftModel, PeftConfig, AutoPeftModelForCausalLM
 from dataclasses import dataclass
 from typing import Optional, Union, List, Dict, Any
 
@@ -63,6 +64,7 @@ class OpenAI_Mixin:
 @dataclass
 class HF_Model_Config:
     model_name: str = None
+    is_peft: bool = False
     trust_remote_code: bool = False
     torch_dtype: Union[str, torch.dtype] = torch.float16
     device_map: str = 'auto'
@@ -93,8 +95,13 @@ class HF_Model_Mixin:
         self._model_config = model_config
         self._late_init = late_init
 
+        self._base_model = model_config.model_name
+        if model_config.is_peft:
+            peft_config = PeftConfig.from_pretrained(model_config.model_name)
+            self._base_model = peft_config.base_model_name_or_path
+
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_config.model_name, 
+            self._base_model, 
             trust_remote_code = model_config.trust_remote_code
         )
         if late_init:
@@ -104,12 +111,38 @@ class HF_Model_Mixin:
     
     def _init_model(self):
         config = self._model_config
-        self._model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
-            config.model_name,
+        kws = self.get_init_kws()
+        if not config.is_peft:
+            self._model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
+                config.model_name, **kws
+            )
+        else:
+            self._model: PeftModel = AutoPeftModelForCausalLM.from_pretrained(
+                config.model_name, **kws
+            )
+    
+    def get_init_kws(self):
+        config = self._model_config
+        kws = dict(
             trust_remote_code = config.trust_remote_code,
             torch_dtype = config.torch_dtype,
             device_map = config.device_map
         )
+        return kws
+           
+    def load_peft_model(self, model_id):
+        """This should be called after initialization"""
+        if self._model is None:
+            self._init_model()
+        
+        assert isinstance(self._model, PeftModel)
+        base_model = self._model.get_base_model()
+        kws = self.get_init_kws()
+        # load peft parameters
+        self._model = PeftModel.from_pretrained(base_model, model_id, **kws)
+        print('Reload peft model: ', model_id)
+        # rename model config
+        self._model_config.model_name = model_id
     
     @property
     def model(self):

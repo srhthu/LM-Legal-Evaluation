@@ -1,6 +1,7 @@
 {
     "model_config": {
         "model_name": "baichuan_7b",
+        "is_peft": false,
         "trust_remote_code": true,
         "torch_dtype": "float16"
     },

@@ -27,10 +27,10 @@ class MultiChoice_Pipeline:
             task_config:
                 
     """
-    def __init__(self, output_dir, run_config):
+    def __init__(self, output_dir, run_config, late_init = True):
         self.output_dir = Path(output_dir)
         self.run_config = deepcopy(run_config)
-        self.worker = MultiChoicePPL(run_config['model_config'], late_init = True)
+        self.worker = MultiChoicePPL(run_config['model_config'], late_init = late_init)
         self.task = AutoTask.from_dict(run_config['task_config'], tokenizer = self.worker.tokenizer)
     
     def set_output_dir(self, path):
@@ -77,3 +77,11 @@ class MultiChoice_Pipeline:
             print(log)
             with open(metric_path, 'a', encoding='utf8') as f:
                 f.write(log + '\n')
+    
+    def load_peft_model(self, model_id):
+        self.worker.load_peft_model(model_id)
+        # update model config
+        self.run_config['model_config']['model_name'] = model_id
+    
+    def change_output_dir(self, new_path):
+        self.output_dir = new_path
